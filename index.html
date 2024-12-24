@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+
+<html>
+	<head>
+		<title>Bulk Bank Account Verifier</title>
+		<meta name="description" content="Verify a list of Nigerian bank accounts in bulk. Useful for record-keeping.">
+		<meta name="robots" content="nofollow">
+		
+		<link rel="stylesheet" href="css/style.css">
+	    <link rel="stylesheet" href="css/bootstrap.min.css" type="text/css">
+	    <link rel="stylesheet" href="css/font-awesome.min.css" type="text/css">
+	    <link rel="stylesheet" href="css/elegant-icons.css" type="text/css">
+	    <link rel="stylesheet" href="css/style.css" type="text/css">
+
+	    <script src="https://cdn.jsdelivr.net/npm/path-browserify/path.js"></script>
+	</head>
+
+
+	<body>
+		<div class="overlay"></div>
+
+		<h1 class="text-center">Bulk Account Verifier</h1>
+		
+		<div class="cont">
+			<div class="flex center-all-stretch">
+				<input type="text" id="acc-no-input" name="Acc no." placeholder="Input account number">
+				<button class="custom-btn" id="verify-btn" disabled>Verify</button>
+			</div>
+			
+			<div class="flex center-vertical">
+				<button class="icon-btn" id="file-picker-btn"><i class="fa-2x icon_document"></i></button>
+				<input type="file" id="file-picker" style="display: none;" accept=".csv">
+				<p class="doc-name center-vertical" id="doc-name"></p>
+			</div>
+		</div>
+
+		<div class="cont">
+			<div class="flex">
+				<p class="statusUpdate" id="status-update"></p>
+			</div>
+		</div>
+	
+	</body>
+
+	<script>
+	const accNoInput = document.getElementById("acc-no-input");
+	const verifyBtn = document.getElementById("verify-btn");
+	const filePickerBtn = document.getElementById("file-picker-btn");
+	const filePicker = document.getElementById("file-picker");
+	const fileNameDisplay = document.getElementById("doc-name");
+	const statusUpdateElem = document.getElementById("status-update");
+
+	let results = [];
+
+	let csvFile;
+	let bankDetails = [];
+	let selectedData = [];
+
+
+	const div = document.querySelector('.overlay');
+
+	div.addEventListener('animationend', function() {
+	  div.style.display = 'none';
+	});
+
+
+	accNoInput.addEventListener("input", () => {
+	  verifyBtn.disabled = accNoInput.value.trim() === "";
+	});
+
+	filePickerBtn.addEventListener("click", () => {
+	  filePicker.click();
+	});
+
+	filePicker.addEventListener("change", () => {
+	  if (filePicker.files.length > 0) {
+	    const file = filePicker.files[0];
+	    if (file.type === "text/csv") {
+	      fileNameDisplay.textContent = `${file.name}`;
+	      statusUpdate("", 0);
+	      verifyBtn.disabled = false;
+	      csvFile = file;
+	    } else {
+	      statusUpdate("Please upload a valid CSV file.", 2);
+	    }
+	  }
+	});
+
+	verifyBtn.addEventListener("click", () => {
+	  if (!csvFile) {
+	    statusUpdate("Please upload a CSV file first.", 2);
+	    return;
+	  }
+
+	  const reader = new FileReader();
+	  reader.onload = (e) => {
+	    const csvData = e.target.result;
+
+	    const rows = csvData.split("\n").map((row) => row.split(","));
+
+	    const headers = rows[0].map(header => header.trim());
+	    console.log("CSV Headers:", headers);
+
+	    const accNoIndex = headers.indexOf("accNo");
+	    const bankNameIndex = headers.indexOf("bank");
+
+	    if (accNoIndex === -1 || bankNameIndex === -1) {
+	      statusUpdate("Invalid CSV structure. Missing 'accNo' or 'bank' columns.", 2);
+	      return;
+	    }
+
+	    selectedData = rows.slice(1).map((row) => ({
+	      accountNo: row[accNoIndex]?.trim(),
+	      bankName: row[bankNameIndex]?.trim(),
+	    }));
+
+	    selectedData.forEach((data, index) => {
+	      if (data.accountNo && data.bankName) {
+	        verifyAccount(data.accountNo, data.bankName, index);
+	      } else {
+	        statusUpdate("Missing account number or bank name in the CSV.", 2);
+	      }
+	    });
+	  };
+	  reader.readAsText(csvFile);
+	});
+
+	function statusUpdate(content, type) {
+	  const colors = ["#cccccc", "#007bff", "#ff4444"];
+	  statusUpdateElem.style.color = colors[type] || colors[0];
+	  statusUpdateElem.textContent = content;
+	}
+
+
+	function appendToCsv(response, index, status = "Invalid") {
+	  // Prepare response data
+	  const accountNumber = selectedData[index].accountNo || "N/A";
+	  const accountName = response?.data?.account_name || "N/A";
+
+	  const result = [status, accountNumber, accountName];
+	  
+	  results.push(result);
+
+	  verifyBtn.textContent = "Download";
+
+	  if (results.length === selectedData.length) {
+
+	    downloadCsv(results);
+	  }
+	}
+
+	function downloadCsv(results) {
+	  verifyBtn.textContent = "Validate";
+
+	  const header = ["Status", "Account Number", "Account Name"];
+	  const csvContent = [header, ...results]
+	    .map(row => row.join(","))
+	    .join("\n");
+
+	  const blob = new Blob([csvContent], { type: "text/csv" });
+	  const downloadLink = document.createElement("a");
+	  downloadLink.href = URL.createObjectURL(blob);
+	  downloadLink.download = "updated_verification_results.csv";
+	  downloadLink.click();
+	}
+
+	function getBankCodes() {
+	  const url = "https://api.paystack.co/bank?currency=NGN&enabled_for_verification=true";
+	  const headers = { Authorization: "Bearer sk_test_45f1ffe78b4566cbc976d6a1b1ac98fa24bdcb9a" };
+
+	  fetch(url, { method: "GET", headers, port: 443 })
+	    .then((response) => {
+	      if (!response.ok) {
+	        throw new Error(`HTTP error! status: ${response.status}`);
+	      }
+	      return response.json();
+	    })
+	    .then((jsonData) => {
+	      if (jsonData.data && Array.isArray(jsonData.data)) {
+	        bankDetails = jsonData.data.map((bank) => ({
+	          bankName: bank.name,
+	          bankCode: bank.code,
+	        }));
+	        console.log("Bank details fetched:", bankDetails);
+	      } else {
+	        console.error("Invalid data structure:", jsonData);
+	        statusUpdate("Invalid data structure", 2);
+	      }
+	    })
+	    .catch((error) => {
+	      console.error("Error:", error.message);
+	      statusUpdate("An error occurred while fetching bank details.", 2);
+	    });
+	}
+
+	function verifyAccount(accNo, bankName, index) {
+	  const bank = bankDetails.find(
+	    (b) => b.bankName.toLowerCase() === bankName.toLowerCase()
+	  );
+
+	  if (!bank) {
+	    statusUpdate(`Bank "${bankName}" not found.`, 2);
+	    appendToCsv(null, index, "Invalid");
+	    return;
+	  }
+
+	  if (/^\d{10}$/.test(accNo) && /^\d{3}$/.test(bank.bankCode)) {
+	    const url = `https://api.paystack.co/bank/resolve?account_number=${accNo}&bank_code=${bank.bankCode}`;
+	    const headers = { Authorization: "Bearer sk_test_45f1ffe78b4566cbc976d6a1b1ac98fa24bdcb9a" };
+
+	    fetch(url, { method: "GET", headers, port: 443 })
+	      .then((response) => {
+	        if (!response.ok) {
+	          throw new Error(`HTTP error! status: ${response.status}`);
+	        }
+	        return response.json();
+	      })
+	      .then((jsonData) => {
+	        console.log("Verification result:", jsonData);
+	        const status = jsonData.status ? "Success" : "Invalid";
+	        appendToCsv(jsonData, index, status);
+	      })
+	      .catch((error) => {
+	        console.error("Error:", error.message);
+	        appendToCsv(null, index, "Invalid");
+	      });
+	  } else {
+	    appendToCsv(null, index, "Invalid");
+	  }
+	}
+
+	getBankCodes();
+	
+	</script>
+
+
+	<link type="text/javascript" rel="js/bootstrap.min.js">
+
+</html>
+
+
