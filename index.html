@@ -18,7 +18,6 @@
 
 	<body>
 		<div class="overlay"></div>
-
 		<h1 class="text-center">Bulk Account Verifier</h1>
 		
 		<div class="cont">
@@ -38,6 +37,22 @@
 			<div class="flex">
 				<p class="statusUpdate" id="status-update"></p>
 			</div>
+		</div>
+
+		<div class="scroll-view">
+			<table id="myTable">
+		        <thead>
+		            <tr>
+		                <th>Status</th>
+		                <th>Account Number</th>
+		                <th>Account Name</th>
+		                <th>Bank Name</th>
+		            </tr>
+		        </thead>
+		        <tbody>
+		            <!-- Section to add rows ---->
+		        </tbody>
+		    </table>
 		</div>
 	
 	</body>
@@ -117,9 +132,9 @@
 	    selectedData.forEach((data, index) => {
 	      if (data.accountNo && data.bankName) {
 	        verifyAccount(data.accountNo, data.bankName, index);
-	      } else {
-	        statusUpdate("Missing account number or bank name in the CSV.", 2);
-	      }
+	      } //else {
+	        //statusUpdate("Missing account number or bank name in the CSV.", 2);
+	      //}
 	    });
 	  };
 	  reader.readAsText(csvFile);
@@ -133,13 +148,27 @@
 
 
 	function appendToCsv(response, index, status = "Invalid") {
-	  // Prepare response data
 	  const accountNumber = selectedData[index].accountNo || "N/A";
 	  const accountName = response?.data?.account_name || "N/A";
+	  var bank;
+  	  // let bank = (bankDetails.find(item => item.bankID === response.data.bank_id)?.bankName) || "Not found";
+
+	  // const bnk = bankDetails.find(item => item.bankID === response.data.bank_id);
+	  // const bank = bnk ? bnk.bankName : "Not found";
+  	  
+  	  if (response === null) {
+		  bank = "Not found";
+	  } else {
+		  const bnk = bankDetails.find(item => item.bankID === response.data.bank_id);
+		  bank = bnk ? bnk.bankName : "Not found";
+	  }
+
 
 	  const result = [status, accountNumber, accountName];
 	  
 	  results.push(result);
+
+	  addRow([status, accountNumber, accountName, bank]);
 
 	  verifyBtn.textContent = "Download";
 
@@ -180,6 +209,7 @@
 	        bankDetails = jsonData.data.map((bank) => ({
 	          bankName: bank.name,
 	          bankCode: bank.code,
+	          bankID: bank.id
 	        }));
 	        console.log("Bank details fetched:", bankDetails);
 	      } else {
@@ -199,8 +229,8 @@
 	  );
 
 	  if (!bank) {
-	    statusUpdate(`Bank "${bankName}" not found.`, 2);
-	    appendToCsv(null, index, "Invalid");
+	    //statusUpdate(`Bank "${bankName}" not found.`, 2);
+	    appendToCsv(null, index, "Invalid");   //, bankName);
 	    return;
 	  }
 
@@ -228,6 +258,26 @@
 	    appendToCsv(null, index, "Invalid");
 	  }
 	}
+
+
+    function addRow(data) {
+        // Get the table body
+        const tableBody = document.querySelector("#myTable tbody");
+
+        // Create a new row
+        const newRow = document.createElement("tr");
+
+        // Loop through the data to create cells
+        data.forEach(value => {
+            const cell = document.createElement("td");
+            cell.textContent = value;
+            newRow.appendChild(cell);
+        });
+
+        // Append the new row to the table body
+        tableBody.appendChild(newRow);
+    }
+
 
 	getBankCodes();
 	

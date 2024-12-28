@@ -47,10 +47,12 @@ p {
 }
 
 
+
 table {
   width: 100%;
   border-collapse: collapse; /* Removes double borders */
   margin: 20px 0;
+  color: #fff;
   font-size: 18px;
   text-align: left;
   border-radius: 8px;
@@ -72,11 +74,11 @@ thead th {
 
 /* Table rows */
 tbody tr:nth-child(even) {
-  background-color: #f2f2f2; /* Alternate row coloring */
+  background-color: #0081f266;  /*#f2f2f2; /* Alternate row coloring */
 }
 
 tbody tr:hover {
-  background-color: #ddd; /* Highlight row on hover */
+  background-color: #444; /* Highlight row on hover */
 }
 
 /* Table data cells */
@@ -96,7 +98,8 @@ table {
   overflow: hidden; /* Ensures content doesn't overflow rounded corners */
 }
 
-/* Custom scrollbar for overflowed tables */
+/*
+/* Custom scrollbar for overflowed tables 
 table::-webkit-scrollbar {
   height: 8px;
 }
@@ -107,7 +110,7 @@ table::-webkit-scrollbar-thumb {
 table::-webkit-scrollbar-thumb:hover {
   background-color: #555;
 }
-
+*/
 
 
 
@@ -489,6 +492,14 @@ table::-webkit-scrollbar-thumb:hover {
 
 .text-center {
   justify-content: center;
+}
+
+.scroll-view {
+  margin: 15px;
+  height: 300px;
+  max-height: 300px;
+/*  display: flex;*/
+  overflow-y: auto;
 }
 
 .cont {
